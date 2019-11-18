@@ -1,0 +1,117 @@
+from keras.optimizers import *
+from keras.models import *
+from layer import  *
+from Dropblock import *
+def DRNet(input_size=(512, 512, 3), start_neurons=16,block_size=7,keep_prob=0.9):
+
+    inputs = Input(input_size)
+    conv1 = Conv2D(start_neurons * 1, (3, 3), activation=None, padding="same")(inputs)
+    conv1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv1)
+    pool1 = MaxPooling2D((2, 2))(conv1)
+    dense1 = residual_drop_block(pool1, start_neurons * 1, True, block_size=block_size, keep_prob=keep_prob)
+    dense1 = residual_drop_block(dense1, start_neurons * 1, False, block_size=block_size, keep_prob=keep_prob)
+
+    conv2 = Conv2D(start_neurons * 2, (3, 3), activation=None, padding="same")(dense1)
+    conv2 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv2)
+    pool2 = MaxPooling2D((2, 2))(conv2)
+    dense2 = residual_drop_block(pool2, start_neurons * 2, True, block_size=block_size, keep_prob=keep_prob)
+    dense2 = residual_drop_block(dense2, start_neurons * 2, False, block_size=block_size, keep_prob=keep_prob)
+
+    conv3 = Conv2D(start_neurons * 4, (3, 3), activation=None, padding="same")(dense2)
+    conv3 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv3)
+    pool3 = MaxPooling2D((2, 2))(conv3)
+    dense3 = residual_drop_block(pool3, start_neurons * 4, True, block_size=block_size, keep_prob=keep_prob)
+    dense3 = residual_drop_block(dense3, start_neurons * 4, False, block_size=block_size, keep_prob=keep_prob)
+
+    conv4 = Conv2D(start_neurons * 8, (3, 3), activation=None, padding="same")(dense3)
+    conv4 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv4)
+    pool4 = MaxPooling2D((2, 2))(conv4)
+    dense4 = residual_drop_block(pool4, start_neurons * 8, True, block_size=block_size, keep_prob=keep_prob)
+    dense4 = residual_drop_block(dense4, start_neurons * 8, False, block_size=block_size, keep_prob=keep_prob)
+    conv5 = Conv2D(start_neurons * 8, (3, 3), activation=None, padding="same")(dense4)
+    conv5 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv5)
+
+
+    up1 = Conv2DTranspose(start_neurons * 4, (3, 3), strides=(2, 2), padding="same")(conv5)
+    up2_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense3)
+    # up2_1 = BatchActivate(up2_1)
+    up2=Conv2D(start_neurons * 4, (1, 1), activation=None, padding="same")(up2_1)
+
+    up3_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense2)
+    # up3_1 = BatchActivate(up3_1)
+    up3_1=Conv2D(start_neurons * 4, (1, 1), activation=None, padding="same")(up3_1)
+    up3=MaxPooling2D((2,2))(up3_1)
+
+    up4_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense1)
+    # up4_1 = BatchActivate(up4_1)
+    up4_1 = Conv2D(start_neurons * 4, (1, 1), activation=None, padding="same")(up4_1)
+    up4=MaxPooling2D((4,4))(up4_1)
+    fulldense1=concatenate([up1,up2,up3,up4])
+
+    conv6= Conv2D(start_neurons * 4, (3, 3), activation=None, padding="same")(fulldense1)
+    conv6 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv6)
+    dense5 = residual_drop_block(conv6, start_neurons * 4, True, block_size=block_size, keep_prob=keep_prob)
+    dense5 = residual_drop_block(dense5, start_neurons * 4, False, block_size=block_size, keep_prob=keep_prob)
+    conv7 = Conv2D(start_neurons * 4, (3, 3), activation=None, padding="same")(dense5)
+    conv7 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv7)
+
+    up5 = Conv2DTranspose(start_neurons * 2, (3, 3), strides=(2, 2), padding="same")(conv7)
+    up6_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense4)
+    # up6_1 = BatchActivate(up6_1)
+    up6_1 = Conv2D(start_neurons * 2, (1, 1), activation=None, padding="same")(up6_1)
+    up6 = Conv2DTranspose(start_neurons * 2, (3, 3), strides=(4, 4), padding="same")(up6_1)
+    up7_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense3)
+    # up7_1 = BatchActivate(up7_1)
+    up7_1 = Conv2D(start_neurons * 2, (1, 1), activation=None, padding="same")(up7_1)
+    up7 =  Conv2DTranspose(start_neurons * 2, (3, 3), strides=(2, 2), padding="same")(up7_1)
+    up8_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense2)
+    # up8_1 = BatchActivate(up8_1)
+    up8 = Conv2D(start_neurons * 2, (1, 1), activation=None, padding="same")(up8_1)
+    up9_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense1)
+    # up9_1 = BatchActivate(up9_1)
+    up9_1 =  Conv2D(start_neurons * 2, (1, 1), activation=None, padding="same")(up9_1)
+    up9 = MaxPooling2D((2,2))(up9_1)
+    fulldense2=concatenate([up5,up6,up7,up8,up9])
+
+    conv8= Conv2D(start_neurons * 2, (3, 3), activation=None, padding="same")(fulldense2)
+    conv8 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv8)
+    dense6 = residual_drop_block(conv8, start_neurons * 2, True, block_size=block_size, keep_prob=keep_prob)
+    dense6 = residual_drop_block(dense6, start_neurons * 2, False, block_size=block_size, keep_prob=keep_prob)
+    conv9 = Conv2D(start_neurons * 2, (3, 3), activation=None, padding="same")(dense6)
+
+    up10_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(conv9)
+    up10 = Conv2DTranspose(start_neurons * 1, (3, 3), strides=(2, 2), padding="same")(up10_1)
+
+    up11_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense5)
+    # up11_1=BatchActivate(up11_1)
+    up11_1 = Conv2D(start_neurons * 1, (1, 1), activation=None, padding="same")(up11_1)
+    up11=Conv2DTranspose(start_neurons * 1, (3, 3), strides=(4, 4), padding="same")(up11_1)
+    up12_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense4)
+    # up12_1 = BatchActivate(up12_1)
+    up12_1 = Conv2D(start_neurons * 1, (1, 1), activation=None, padding="same")(up12_1)
+    up12 = Conv2DTranspose(start_neurons * 1, (3, 3), strides=(8, 8), padding="same")(up12_1)
+    up13_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense3)
+    # up13_1 = BatchActivate(up13_1)
+    up13_1 = Conv2D(start_neurons * 1, (1, 1), activation=None, padding="same")(up13_1)
+    up13 = Conv2DTranspose(start_neurons * 1, (3, 3), strides=(4, 4), padding="same")(up13_1)
+    up14_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense2)
+    # up14_1 = BatchActivate(up14_1)
+    up14_1 = Conv2D(start_neurons * 1, (1, 1), activation=None, padding="same")(up14_1)
+    up14 = Conv2DTranspose(start_neurons * 1, (3, 3), strides=(2, 2), padding="same")(up14_1)
+    up15_1 = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(dense1)
+    # up15_1 = BatchActivate(up15_1)
+    up15= Conv2D(start_neurons * 1, (1, 1), activation=None, padding="same")(up15_1)
+    fulldense3 = concatenate([up10, up11, up12, up13, up14,up15])
+
+
+    up = Conv2DTranspose(start_neurons * 1, (3, 3), strides=(2, 2), padding="same")(fulldense3)
+    up = Conv2D(start_neurons * 1, (3, 3), activation=None, padding="same")(up)
+    up = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(up)
+    up = Conv2D(start_neurons * 1, (3, 3), activation=None, padding="same")(up)
+    up = DropBlock2D(block_size=block_size, keep_prob=keep_prob)(up)
+    output_layer_noActi = Conv2D(1, (1, 1), padding="same", activation=None)(up)
+    output_layer = Activation('sigmoid')(output_layer_noActi)
+    model = Model(input=inputs, output=output_layer)
+    model.compile(optimizer=Adam(lr=1e-3), loss='binary_crossentropy', metrics=['accuracy'])
+
+    return model
